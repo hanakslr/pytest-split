@@ -1,3 +1,4 @@
+from collections import defaultdict
 import enum
 import functools
 import heapq
@@ -8,6 +9,59 @@ if TYPE_CHECKING:
     from typing import Dict, List, Tuple
 
     from _pytest import nodes
+
+def duration_module_based_chunks(splits: int, items: "List[nodes.Item]", durations: "Dict[str, float]") -> "List[TestGroup]":
+    """Split tests into groups by runtime, keeping tests in the same module in the same group."""
+    items_with_durations = _get_items_with_durations(items, durations)
+
+    # Items with no grouping
+    ungrouped_items: List[Tuple(list, float)] = []
+
+    # A mapping of module: ([test items], module test duration)
+    module_grouped_items = defaultdict(Tuple[list, 0])
+
+    # Now we need to group them by module
+    for item_wd in items_with_durations:
+        parts = str(item_wd[0]).split(":")
+
+        if len(parts) == 1:
+            # This is a raw test name with no module attached
+            # this tuple is an array of the test item, to the test duration
+            ungrouped_items.append(([item_wd],item_wd[1]))
+        else:
+            # This is specified as a test in a module
+
+            # Append the test item to this group
+            module_grouped_items[parts[0]][0].append(item_wd)
+
+            # Add the test duration to this group
+            module_grouped_items[parts[0]][1] += item_wd[1]
+
+    # test_groups is a list of tuples, where is tuple is (a list of test items, test duration for list)
+    test_groups = ungrouped_items + list(module_grouped_items.values())
+
+    # Get the amount of time that each chunk should use
+    time_per_group = sum(map(itemgetter(1), items_with_durations)) / splits
+
+    selected: "List[List[nodes.Item]]" = [[] for i in range(splits)]
+    deselected: "List[List[nodes.Item]]" = [[] for i in range(splits)]
+    duration: "List[float]" = [0 for i in range(splits)]
+
+    group_idx = 0
+    for test_items, test_items_duration in test_groups:
+        if duration[group_idx] >= time_per_group:
+            group_idx += 1
+
+        selected[group_idx].append(*test_items)
+        for i in range(splits):
+            if i != group_idx:
+                deselected[i].append(*test_items)
+        duration[group_idx] += test_items_duration
+
+    return [
+        TestGroup(selected=selected[i], deselected=deselected[i], duration=duration[i])
+        for i in range(splits)
+    ]
 
 
 class TestGroup(NamedTuple):
@@ -155,6 +209,7 @@ def _remove_irrelevant_durations(
 class Algorithms(enum.Enum):
     # values have to wrapped inside functools to avoid them being considered method definitions
     duration_based_chunks = functools.partial(duration_based_chunks)
+    duration_module_based_chunks = functools.partial(duration_module_based_chunks)
     least_duration = functools.partial(least_duration)
 
     @staticmethod
