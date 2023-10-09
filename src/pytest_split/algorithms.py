@@ -15,10 +15,10 @@ def duration_module_based_chunks(splits: int, items: "List[nodes.Item]", duratio
     items_with_durations = _get_items_with_durations(items, durations)
 
     # Items with no grouping
-    ungrouped_items: List[Tuple(list, float)] = []
+    ungrouped_items: "List[Tuple[list, float]]" = []
 
     # A mapping of module: ([test items], module test duration)
-    module_grouped_items = defaultdict(Tuple[list, 0])
+    module_grouped_items = defaultdict(tuple[list, 0])
 
     # Now we need to group them by module
     for item_wd in items_with_durations:
