@@ -22,20 +22,20 @@ def duration_module_based_chunks(splits: int, items: "List[nodes.Item]", duratio
 
     # Now we need to group them by module
     for item_wd in items_with_durations:
-        parts = str(item_wd[0]).split(":")
-
-        if len(parts) == 1:
-            # This is a raw test name with no module attached
-            # this tuple is an array of the test item, to the test duration
-            ungrouped_items.append(([item_wd],item_wd[1]))
+        if not item_wd[0].fspath:
+            # We don't know where this test came from. This shouldn't happen.
+            ungrouped_items.append(([item_wd[0]],item_wd[1]))
         else:
             # This is specified as a test in a module
 
             # Append the test item to this group
-            module_grouped_items[parts[0]][0].append(item_wd)
-
-            # Add the test duration to this group
-            module_grouped_items[parts[0]][1] += item_wd[1]
+            if not module_grouped_items[item_wd[0].fspath]:
+                module_grouped_items[item_wd[0].fspath] = ([item_wd[0]], item_wd[1])
+            else:
+                module_grouped_items[item_wd[0].fspath] = (
+                    [*module_grouped_items[item_wd[0].fspath][0], item_wd[0]],
+                    module_grouped_items[item_wd[0].fspath][1] + item_wd[1]
+                )
 
     # test_groups is a list of tuples, where is tuple is (a list of test items, test duration for list)
     test_groups = ungrouped_items + list(module_grouped_items.values())
