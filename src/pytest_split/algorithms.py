@@ -52,10 +52,10 @@ def duration_module_based_chunks(splits: int, items: "List[nodes.Item]", duratio
         if duration[group_idx] >= time_per_group:
             group_idx += 1
 
-        selected[group_idx].append(*test_items)
+        selected[group_idx].extend([test_items])
         for i in range(splits):
             if i != group_idx:
-                deselected[i].append(*test_items)
+                deselected[i].extend([test_items])
         duration[group_idx] += test_items_duration
 
     return [
